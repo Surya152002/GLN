@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Rolling Chair Sensor</title>
+	<style>
+		body {
+			background-color: #333;
+			color: #fff;
+			font-family: Arial, sans-serif;
+			font-size: 24px;
+			text-align: center;
+		}
+		
+		#sensor-data {
+			margin-top: 50px;
+		}
+	</style>
+</head>
+<body>
+	<h1>Rolling Chair Sensor</h1>
+	<p>Real-time sensor data:</p>
+	<div id="sensor-data"></div>
+	
+	<script>
+		window.onload = function() {
+			// set up Bluetooth connection
+			var serviceUUID = "00001101-0000-1000-8000-00805F9B34FB";
+			var characteristicUUID = "00001101-0000-1000-8000-00805F9B34FB";
+			var deviceName = "Rolling Chair Sensor";
+
+			navigator.bluetooth.requestDevice({
+				filters: [{name: deviceName}],
+				optionalServices: [serviceUUID],
+			})
+			.then(device => device.gatt.connect())
+			.then(server => server.getPrimaryService(serviceUUID))
+			.then(service => service.getCharacteristic(characteristicUUID))
+			.then(characteristic => {
+				characteristic.addEventListener("characteristicvaluechanged", handleSensorData);
+				characteristic.startNotifications();
+			})
+			.catch(error => console.error(error));
+
+			// handle incoming sensor data
+			function handleSensorData(event) {
+				var sensorValue = event.target.value.getInt16(0);
+				var sensorTime = new Date().toLocaleTimeString();
+				document.getElementById("sensor-data").innerHTML = "Value: " + sensorValue + " at " + sensorTime;
+				sendSensorData(sensorValue, sensorTime);
+			};
+
+			// send sensor data via Bluetooth to the laptop
+			function sendSensorData(value, time) {
+				var data = new Uint16Array(2);
+				data[0] = value;
+				data[1] = time.getTime();
+				characteristic.writeValue(data);
+			}
+		};
+	</script>
+</body>
+</html>
